@@ -1,4 +1,4 @@
-import { callDeepSeek } from './_lib/deepseek.js'
+import { callGroq } from './_lib/groq.js'
 import { handleOptions, readJsonBody, setCors } from './_lib/handler.js'
 import { buildPortfolioContext } from './_lib/portfolioContext.js'
 import { checkRateLimit, getClientIp } from './_lib/rateLimit.js'
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
     const context = await buildPortfolioContext()
     const systemMessage = { role: 'system', content: context }
-    const reply = await callDeepSeek([systemMessage, ...messages])
+    const reply = await callGroq([systemMessage, ...messages])
 
     return res.status(200).json({ reply })
   } catch (error) {
