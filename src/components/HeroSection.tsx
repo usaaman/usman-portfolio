@@ -137,7 +137,31 @@ export function HeroSection({ id, data }: HeroSectionProps) {
           transition={{ duration: 0.9, delay: 0.2 }}
           className="relative mx-auto"
         >
-          <div className="relative">
+          {/* 🔥 YAHAN CHANGE HUA HAI - Image wale div mein events add kiye hain */}
+          <div 
+            className="relative"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const centerX = rect.width / 2;
+              const centerY = rect.height / 2;
+              const rotateX = ((y - centerY) / centerY) * 15;
+              const rotateY = ((x - centerX) / centerX) * 15;
+              const image = e.currentTarget.querySelector('img');
+              if (image) {
+                image.style.transform = `rotateX(${-rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+                image.style.transition = 'transform 0.1s ease-out';
+              }
+            }}
+            onMouseLeave={(e) => {
+              const image = e.currentTarget.querySelector('img');
+              if (image) {
+                image.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+                image.style.transition = 'transform 0.5s ease-out';
+              }
+            }}
+          >
             <div
               className="absolute -inset-6 rounded-full blur-3xl"
               style={{ background: 'var(--gradient-hero)', opacity: 0.4 }}
