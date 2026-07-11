@@ -38,33 +38,33 @@ export function portfolioDataToFirestoreSeed() {
 
   const projects: FirestoreProjectItem[] = portfolioData.projects.map((project, index) => ({
     id: `project-${index}`,
-    title: project.title,
-    description: project.description,
-    techStack: project.tech,
-    githubUrl: project.githubUrl,
-    liveUrl: project.liveUrl,
+    title: project.title ?? '',
+    description: project.description ?? '',
+    techStack: project.tech ?? [],
+    githubUrl: project.githubUrl ?? '',
+    liveUrl: project.liveUrl ?? '',
     featured: project.featured ?? false,
     order: index,
-    comingSoon: project.comingSoon,
+    comingSoon: project.comingSoon ?? false,
   }))
 
   const serviceIconNames = ['Globe', 'LayoutDashboard', 'Bot', 'CloudCog', 'Code2', 'Brush']
   const services: FirestoreServiceItem[] = portfolioData.services.map((service, index) => ({
     id: `service-${index}`,
-    title: service.title,
-    description: service.description,
+    title: service.title ?? '',
+    description: service.description ?? '',
     category: 'Freelance',
     iconName: serviceIconNames[index] ?? 'Globe',
-    badge: service.badge,
+    badge: service.badge ?? '',
     order: index,
   }))
 
   const hero: FirestoreHeroContent = {
-    name: portfolioData.hero.name,
-    tagline: portfolioData.hero.tagline,
-    summary: portfolioData.hero.summary,
-    profileImageUrl: portfolioData.hero.profileImageUrl,
-    resumeUrl: portfolioData.hero.resumeUrl,
+    name: portfolioData.hero.name ?? '',
+    tagline: portfolioData.hero.tagline ?? '',
+    summary: portfolioData.hero.summary ?? '',
+    profileImageUrl: portfolioData.hero.profileImageUrl ?? '',
+    resumeUrl: portfolioData.hero.resumeUrl ?? '',
   }
 
   const about: FirestoreAbout = {
