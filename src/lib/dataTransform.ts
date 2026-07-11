@@ -130,12 +130,21 @@ export function firestoreServicesToServiceItems(services: FirestoreServiceItem[]
 
 export function applySiteTheme(theme: FirestoreSiteTheme) {
   const root = document.documentElement
-  root.style.setProperty('--color-primary', theme.primary)
-  root.style.setProperty('--color-secondary', theme.secondary)
-  root.style.setProperty('--color-accent', theme.accent)
-  root.style.setProperty('--color-bg', theme.bg)
-  root.style.setProperty('--color-surface', theme.surface)
-  root.style.setProperty('--color-text', theme.text)
+  root.style.setProperty('--primary', theme.primary)
+  root.style.setProperty('--secondary', theme.secondary)
+  root.style.setProperty('--accent', theme.accent)
+  root.style.setProperty('--background', theme.bg)
+  root.style.setProperty('--surface', theme.surface)
+  root.style.setProperty('--foreground', theme.text)
+  root.style.setProperty('--neon-purple', theme.primary)
+  root.style.setProperty('--neon-cyan', theme.secondary)
+  root.style.setProperty('--neon-coral', theme.accent)
+  root.style.setProperty(
+    '--gradient-hero',
+    `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 50%, ${theme.accent} 100%)`,
+  )
+  root.style.setProperty('--gradient-accent', `linear-gradient(90deg, ${theme.primary}, ${theme.secondary})`)
+  root.style.setProperty('--gradient-coral', `linear-gradient(90deg, ${theme.accent}, ${theme.primary})`)
 }
 
 export function getFallbackPortfolioData(): PortfolioData {

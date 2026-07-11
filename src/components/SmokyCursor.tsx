@@ -1,214 +1,134 @@
 import { useEffect, useRef } from 'react'
 
-interface SmokyCursorProps {
-  containerSelector: string
-}
-
 interface Particle {
   x: number
   y: number
-  size: number
-  alpha: number
-  life: number
-  maxLife: number
   vx: number
   vy: number
-  color: [number, number, number]
+  size: number
+  life: number
+  maxLife: number
+  color: string
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
+function getBrandColors(): string[] {
+  if (typeof window === 'undefined') return ['#a855f7', '#22d3ee', '#f472b6']
+  const style = getComputedStyle(document.documentElement)
+  const purple = style.getPropertyValue('--neon-purple').trim() || 'oklch(0.68 0.28 300)'
+  const cyan = style.getPropertyValue('--neon-cyan').trim() || 'oklch(0.78 0.19 210)'
+  const coral = style.getPropertyValue('--neon-coral').trim() || 'oklch(0.72 0.22 25)'
+  return [purple, cyan, coral]
 }
 
-function parseColor(input: string) {
-  const value = input.trim()
-
-  if (value.startsWith('#')) {
-    const hex = value.slice(1)
-    const fullHex =
-      hex.length === 3
-        ? hex
-            .split('')
-            .map((char) => char + char)
-            .join('')
-        : hex
-
-    const int = Number.parseInt(fullHex, 16)
-    return [(int >> 16) & 255, (int >> 8) & 255, int & 255] as [number, number, number]
-  }
-
-  const match = value.match(/\d+(\.\d+)?/g)
-  if (!match) {
-    return [125, 211, 252] as [number, number, number]
-  }
-
-  return [Number(match[0]), Number(match[1]), Number(match[2])] as [number, number, number]
-}
-
-function lerpColor(
-  from: [number, number, number],
-  to: [number, number, number],
-  mix: number,
-): [number, number, number] {
-  return [
-    Math.round(from[0] + (to[0] - from[0]) * mix),
-    Math.round(from[1] + (to[1] - from[1]) * mix),
-    Math.round(from[2] + (to[2] - from[2]) * mix),
-  ]
-}
-
-export function SmokyCursor({ containerSelector }: SmokyCursorProps) {
+export function SmokyCursor() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
-    const container = document.querySelector<HTMLElement>(containerSelector)
-    if (!canvas || !container) {
-      return
-    }
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-    const context = canvas.getContext('2d')
-    if (!context) {
-      return
-    }
-
-    let animationFrame = 0
-    let resizeTimeout = window.setTimeout(() => undefined, 0)
-    const particles: Particle[] = []
     const isMobile = window.matchMedia('(max-width: 768px)').matches
     const maxParticles = isMobile ? 30 : 100
-    const particleBurst = isMobile ? 2 : 4
+    const particles: Particle[] = []
+    let colors = getBrandColors()
+    const pointer = { x: -9999, y: -9999, active: false }
 
-    const syncCanvasSize = () => {
-      const bounds = container.getBoundingClientRect()
-      const ratio = window.devicePixelRatio || 1
-      canvas.width = bounds.width * ratio
-      canvas.height = bounds.height * ratio
-      canvas.style.width = `${bounds.width}px`
-      canvas.style.height = `${bounds.height}px`
-      context.setTransform(ratio, 0, 0, ratio, 0, 0)
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      canvas!.width = window.innerWidth * dpr
+      canvas!.height = window.innerHeight * dpr
+      canvas!.style.width = window.innerWidth + 'px'
+      canvas!.style.height = window.innerHeight + 'px'
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
 
-    const getPalette = () => {
-      const styles = getComputedStyle(document.documentElement)
-      return [
-        parseColor(styles.getPropertyValue('--color-primary')),
-        parseColor(styles.getPropertyValue('--color-secondary')),
-        parseColor(styles.getPropertyValue('--color-accent')),
-      ]
+    let resizeTimer: ReturnType<typeof setTimeout>
+    function onResize() {
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        resize()
+        colors = getBrandColors()
+      }, 100)
     }
 
-    const emit = (clientX: number, clientY: number) => {
-      const bounds = container.getBoundingClientRect()
-      const x = clientX - bounds.left
-      const y = clientY - bounds.top
-
-      if (x < 0 || y < 0 || x > bounds.width || y > bounds.height) {
-        return
-      }
-
-      const palette = getPalette()
-      for (let index = 0; index < particleBurst; index += 1) {
-        const from = palette[Math.floor(Math.random() * palette.length)]!
-        const to = palette[Math.floor(Math.random() * palette.length)]!
+    function spawn(x: number, y: number) {
+      if (particles.length >= maxParticles) return
+      const count = isMobile ? 1 : 2
+      for (let i = 0; i < count; i++) {
         particles.push({
-          x: x + (Math.random() - 0.5) * 16,
-          y: y + (Math.random() - 0.5) * 16,
+          x: x + (Math.random() - 0.5) * 12,
+          y: y + (Math.random() - 0.5) * 12,
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: (Math.random() - 0.5) * 0.6 - 0.3,
           size: 8 + Math.random() * 32,
-          alpha: 0.1 + Math.random() * 0.5,
           life: 0,
-          maxLife: 1000 + Math.random() * 1000,
-          vx: (Math.random() - 0.5) * 0.5,
-          vy: -0.3 - Math.random() * 0.7,
-          color: lerpColor(from, to, Math.random()),
+          maxLife: 60 + Math.random() * 60,
+          color: colors[Math.floor(Math.random() * colors.length)],
         })
       }
-
-      if (particles.length > maxParticles) {
-        particles.splice(0, particles.length - maxParticles)
-      }
     }
 
-    let previousTime = performance.now()
-    const render = (now: number) => {
-      const delta = now - previousTime
-      previousTime = now
-      const bounds = container.getBoundingClientRect()
+    function onPointer(e: PointerEvent) {
+      pointer.x = e.clientX
+      pointer.y = e.clientY
+      pointer.active = true
+      spawn(pointer.x, pointer.y)
+    }
+    function onPointerLeave() {
+      pointer.active = false
+    }
 
-      context.clearRect(0, 0, bounds.width, bounds.height)
-      context.globalCompositeOperation = 'screen'
-
-      for (let index = particles.length - 1; index >= 0; index -= 1) {
-        const particle = particles[index]!
-        particle.life += delta
-        const progress = particle.life / particle.maxLife
-
-        if (progress >= 1) {
-          particles.splice(index, 1)
+    function loop() {
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height)
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i]
+        p.life++
+        p.x += p.vx
+        p.y += p.vy
+        p.vy -= 0.005
+        const t = p.life / p.maxLife
+        if (t >= 1) {
+          particles.splice(i, 1)
           continue
         }
-
-        particle.x += particle.vx * delta * 0.08
-        particle.y += particle.vy * delta * 0.08
-        particle.size += delta * 0.01
-
-        const currentAlpha = clamp((1 - progress) * particle.alpha, 0, 1)
-        const gradient = context.createRadialGradient(
-          particle.x,
-          particle.y,
+        const opacity = (0.1 + 0.5 * (1 - t)).toFixed(3)
+        const grad = ctx!.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size)
+        grad.addColorStop(
           0,
-          particle.x,
-          particle.y,
-          particle.size,
+          `color-mix(in oklab, ${p.color} ${Math.round(Number(opacity) * 100)}%, transparent)`,
         )
-
-        gradient.addColorStop(0, `rgba(${particle.color.join(',')}, ${currentAlpha})`)
-        gradient.addColorStop(0.55, `rgba(${particle.color.join(',')}, ${currentAlpha * 0.45})`)
-        gradient.addColorStop(1, `rgba(${particle.color.join(',')}, 0)`)
-
-        context.fillStyle = gradient
-        context.beginPath()
-        context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
-        context.fill()
+        grad.addColorStop(1, `color-mix(in oklab, ${p.color} 0%, transparent)`)
+        ctx!.fillStyle = grad
+        ctx!.beginPath()
+        ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx!.fill()
       }
-
-      animationFrame = window.requestAnimationFrame(render)
+      rafRef.current = requestAnimationFrame(loop)
     }
 
-    const handlePointerMove = (event: PointerEvent) => emit(event.clientX, event.clientY)
-    const handleTouchMove = (event: TouchEvent) => {
-      const touch = event.touches[0]
-      if (touch) {
-        emit(touch.clientX, touch.clientY)
-      }
-    }
-
-    const handleResize = () => {
-      window.clearTimeout(resizeTimeout)
-      resizeTimeout = window.setTimeout(syncCanvasSize, 120)
-    }
-
-    syncCanvasSize()
-    animationFrame = window.requestAnimationFrame(render)
-
-    container.addEventListener('pointermove', handlePointerMove, { passive: true })
-    container.addEventListener('touchmove', handleTouchMove, { passive: true })
-    window.addEventListener('resize', handleResize)
+    resize()
+    window.addEventListener('resize', onResize)
+    window.addEventListener('pointermove', onPointer)
+    window.addEventListener('pointerleave', onPointerLeave)
+    rafRef.current = requestAnimationFrame(loop)
 
     return () => {
-      window.cancelAnimationFrame(animationFrame)
-      window.clearTimeout(resizeTimeout)
-      container.removeEventListener('pointermove', handlePointerMove)
-      container.removeEventListener('touchmove', handleTouchMove)
-      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('pointermove', onPointer)
+      window.removeEventListener('pointerleave', onPointerLeave)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [containerSelector])
+  }, [])
 
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none absolute inset-0 z-0 opacity-90 blur-[2px]"
       aria-hidden="true"
+      className="pointer-events-none fixed inset-0 z-0"
+      style={{ mixBlendMode: 'screen' }}
     />
   )
 }

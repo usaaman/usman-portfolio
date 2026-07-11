@@ -1,11 +1,8 @@
-import clsx from 'clsx'
+import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Code2 } from 'lucide-react'
 import type { SkillCategory } from '../types'
 import { LoadingSkeleton } from './LoadingSkeleton'
-import { ScrollReveal } from './ScrollReveal'
-import { SectionIntro } from './SectionIntro'
 
 interface SkillsSectionProps {
   id: string
@@ -14,116 +11,116 @@ interface SkillsSectionProps {
 }
 
 export function SkillsSection({ id, skills, loading = false }: SkillsSectionProps) {
-  const defaultTab = useMemo(() => skills[0]?.id ?? '', [skills])
-  const [activeTab, setActiveTab] = useState(defaultTab)
-  const activeCategory = skills.find((category) => category.id === activeTab) ?? skills[0]
+  const categories = useMemo(
+    () =>
+      skills.map((cat) => ({
+        category: cat.label,
+        items: cat.skills.map((skill) => ({
+          name: skill.name,
+          percentage: skill.level,
+        })),
+      })),
+    [skills],
+  )
 
-  useEffect(() => {
-    if (defaultTab && !activeTab) {
-      setActiveTab(defaultTab)
-    }
-  }, [activeTab, defaultTab])
+  const [active, setActive] = useState(0)
+  const current = categories[active]
+
+  if (loading) {
+    return (
+      <section id={id} className="relative px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <LoadingSkeleton className="min-h-[420px]" />
+        </div>
+      </section>
+    )
+  }
+
+  if (!current) return null
 
   return (
-    <section id={id} className="px-4 py-20 md:py-24">
+    <section id={id} className="relative px-6 py-24 md:py-32">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            'radial-gradient(circle at 20% 40%, oklch(0.68 0.28 300 / 0.08), transparent 60%)',
+        }}
+      />
       <div className="mx-auto max-w-6xl">
-        <SectionIntro
-          eyebrow="Skills"
-          title="Flexible across frontend, backend, AI, and creative production."
-          subtitle="The section is already structured as prop-driven categories so it can plug into an admin-managed CMS later."
-        />
-
-        {loading ? (
-          <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-            <LoadingSkeleton className="min-h-[420px]" />
-            <LoadingSkeleton className="min-h-[420px]" />
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.6 }}
+          className="mb-12"
+        >
+          <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <Code2 className="h-4 w-4" style={{ color: 'var(--neon-purple)' }} />
+            <span>Skills</span>
           </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <ScrollReveal className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-5">
-              <div className="grid gap-3">
-                {skills.map((category) => {
-                  const selected = category.id === activeCategory?.id
-                  return (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => setActiveTab(category.id)}
-                      className={clsx(
-                        'group rounded-[1.5rem] border px-5 py-4 text-left transition',
-                        selected
-                          ? 'border-[color:color-mix(in_oklab,var(--color-primary)_55%,transparent)] bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_20%,transparent),color-mix(in_oklab,var(--color-accent)_18%,transparent))] shadow-[0_0_30px_color-mix(in_oklab,var(--color-primary)_18%,transparent)]'
-                          : 'border-white/10 bg-black/[0.08] hover:border-white/20 hover:bg-white/[0.08]',
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <h3 className="font-display text-xl text-[var(--color-text)]">{category.label}</h3>
-                          <p className="mt-2 text-sm leading-6 text-[color:color-mix(in_oklab,var(--color-text)_68%,transparent)]">
-                            {category.description}
-                          </p>
-                        </div>
-                        <ChevronDown
-                          className={clsx(
-                            'shrink-0 transition',
-                            selected ? 'rotate-180 text-[var(--color-primary)]' : 'text-[var(--color-text)]',
-                          )}
-                        />
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </ScrollReveal>
+          <h2 className="font-display text-4xl font-bold tracking-tight md:text-6xl">
+            Tools of the <span className="text-gradient">trade</span>
+          </h2>
+        </motion.div>
 
-            <ScrollReveal delay={0.1} className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-8">
-              <AnimatePresence mode="wait">
-                {activeCategory ? (
-                  <motion.div
-                    key={activeCategory.id}
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -18 }}
-                    transition={{ duration: 0.35 }}
+        <div className="mb-8 flex flex-wrap gap-2">
+          {categories.map((cat, i) => (
+            <button
+              key={cat.category}
+              type="button"
+              onClick={() => setActive(i)}
+              className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+                active === i
+                  ? 'border-transparent text-primary-foreground'
+                  : 'border-border bg-surface/60 text-muted-foreground hover:text-foreground'
+              }`}
+              style={active === i ? { background: 'var(--gradient-hero)' } : undefined}
+            >
+              {cat.category}
+            </button>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current.category}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.35 }}
+            className="grid gap-4 md:grid-cols-2"
+          >
+            {current.items.map((skill, i) => (
+              <motion.div
+                key={skill.name}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className="rounded-2xl border border-border bg-surface/40 p-5 backdrop-blur"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="font-medium">{skill.name}</span>
+                  <span
+                    className="text-sm font-bold tabular-nums"
+                    style={{ color: 'var(--neon-cyan)' }}
                   >
-                    <div className="mb-8">
-                      <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--color-primary)]">
-                        {activeCategory.label}
-                      </p>
-                      <p className="mt-3 max-w-2xl text-base leading-7 text-[color:color-mix(in_oklab,var(--color-text)_72%,transparent)]">
-                        {activeCategory.description}
-                      </p>
-                    </div>
-
-                    <div className="grid gap-5">
-                      {activeCategory.skills.map((skill, index) => (
-                        <motion.div
-                          key={skill.name}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.45, delay: index * 0.06 }}
-                        >
-                          <div className="mb-2 flex items-center justify-between text-sm font-medium text-[var(--color-text)]">
-                            <span>{skill.name}</span>
-                            <span className="text-[var(--color-primary)]">{skill.level}%</span>
-                          </div>
-                          <div className="h-3 overflow-hidden rounded-full bg-black/[0.18]">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${skill.level}%` }}
-                              transition={{ duration: 0.9, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                              className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-primary),var(--color-secondary),var(--color-accent))] shadow-[0_0_20px_color-mix(in_oklab,var(--color-primary)_22%,transparent)]"
-                            />
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-            </ScrollReveal>
-          </div>
-        )}
+                    {skill.percentage}%
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-input">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${skill.percentage}%` }}
+                    transition={{ duration: 1.1, delay: 0.1 + i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                    className="h-full rounded-full"
+                    style={{ background: 'var(--gradient-accent)' }}
+                  />
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   )

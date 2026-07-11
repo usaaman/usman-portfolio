@@ -1,8 +1,7 @@
-import { Send } from 'lucide-react'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { motion } from 'framer-motion'
+import { Check, MessageCircle, Send } from 'lucide-react'
 import type { ContactFormValues, ContactLinkItem } from '../types'
-import { ScrollReveal } from './ScrollReveal'
-import { SectionIntro } from './SectionIntro'
 
 interface ContactSectionProps {
   id: string
@@ -10,162 +9,194 @@ interface ContactSectionProps {
   onSubmit?: (values: ContactFormValues) => Promise<void> | void
 }
 
-type FormErrors = Partial<Record<keyof ContactFormValues, string>>
-
-const initialValues: ContactFormValues = {
-  name: '',
-  email: '',
-  message: '',
-}
-
 export function ContactSection({ id, links, onSubmit }: ContactSectionProps) {
-  const [values, setValues] = useState(initialValues)
-  const [errors, setErrors] = useState<FormErrors>({})
-  const [status, setStatus] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState<ContactFormValues>({ name: '', email: '', message: '' })
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [error, setError] = useState('')
 
-  const linkCards = useMemo(() => links, [links])
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError('')
 
-  const validate = () => {
-    const nextErrors: FormErrors = {}
-
-    if (!values.name.trim()) nextErrors.name = 'Please enter your name.'
-    if (!values.email.trim()) {
-      nextErrors.email = 'Please enter your email.'
-    } else if (!/\S+@\S+\.\S+/.test(values.email)) {
-      nextErrors.email = 'Please enter a valid email address.'
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      setError('All fields are required.')
+      return
     }
-
-    if (!values.message.trim()) nextErrors.message = 'Please enter your message.'
-
-    setErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
-  }
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setStatus('')
-
-    if (!validate()) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setError('Please enter a valid email.')
+      return
+    }
+    if (form.message.length > 1000) {
+      setError('Message is too long (max 1000 chars).')
       return
     }
 
+    setState('sending')
     try {
-      setSubmitting(true)
-      await onSubmit?.(values)
-      setStatus('Message sent successfully. Muhammad will get back to you soon.')
-      setValues(initialValues)
-      setErrors({})
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Failed to send message. Please try again.')
-    } finally {
-      setSubmitting(false)
+      await onSubmit?.(form)
+      setState('sent')
+      setForm({ name: '', email: '', message: '' })
+      setTimeout(() => setState('idle'), 3500)
+    } catch (err) {
+      setState('error')
+      setError(err instanceof Error ? err.message : 'Something went wrong. Try again or email directly.')
     }
   }
 
   return (
-    <section id={id} className="px-4 pt-20 pb-24 md:py-24 md:pb-28">
-      <div className="mx-auto max-w-6xl">
-        <SectionIntro
-          eyebrow="Contact"
-          title="Let’s build something intelligent, useful, and visually sharp."
-          subtitle="The contact UI is complete with validation and a prop-based submit hook, ready for backend wiring in the next phase."
-        />
+    <section id={id} className="relative px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-5xl">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.6 }}
+          className="mb-12 text-center"
+        >
+          <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <MessageCircle className="h-4 w-4" style={{ color: 'var(--neon-purple)' }} />
+            <span>Contact</span>
+          </div>
+          <h2 className="font-display text-4xl font-bold tracking-tight md:text-6xl">
+            Let&apos;s build <span className="text-gradient">something</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            Have a project in mind or just want to say hi? Drop a message — I usually reply within 24
+            hours.
+          </p>
+        </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <ScrollReveal className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-8">
-            <div className="grid gap-4">
-              {linkCards.map((link) => {
-                const Icon = link.icon
-                return (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    target={link.href.startsWith('http') ? '_blank' : undefined}
-                    rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
-                    className="flex items-center gap-4 rounded-[1.5rem] border border-white/10 bg-black/10 px-4 py-4 transition hover:-translate-y-1 hover:border-[var(--color-primary)]"
-                  >
-                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,var(--color-primary),var(--color-secondary))] text-slate-950">
-                      <Icon size={20} />
-                    </span>
-                    <span>
-                      <span className="block text-xs font-semibold uppercase tracking-[0.24em] text-[color:color-mix(in_oklab,var(--color-text)_58%,transparent)]">
-                        {link.label}
-                      </span>
-                      <span className="mt-1 block text-sm text-[var(--color-text)]">{link.value}</span>
-                    </span>
-                  </a>
-                )
-              })}
-            </div>
-          </ScrollReveal>
-
-          <ScrollReveal delay={0.1} className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-8">
-            <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
-              <div>
-                <label htmlFor="name" className="mb-2 block text-sm font-medium text-[var(--color-text)]">
-                  Name
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={values.name}
-                  onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))}
-                  className="w-full rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
-                  placeholder="Your name"
-                />
-                {errors.name ? <p className="mt-2 text-sm text-rose-400">{errors.name}</p> : null}
-              </div>
-
-              <div>
-                <label htmlFor="email" className="mb-2 block text-sm font-medium text-[var(--color-text)]">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={values.email}
-                  onChange={(event) => setValues((current) => ({ ...current, email: event.target.value }))}
-                  className="w-full rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
-                  placeholder="you@example.com"
-                />
-                {errors.email ? <p className="mt-2 text-sm text-rose-400">{errors.email}</p> : null}
-              </div>
-
-              <div>
-                <label htmlFor="message" className="mb-2 block text-sm font-medium text-[var(--color-text)]">
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  rows={6}
-                  value={values.message}
-                  onChange={(event) => setValues((current) => ({ ...current, message: event.target.value }))}
-                  className="w-full rounded-[1.5rem] border border-white/10 bg-black/10 px-4 py-3 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)]"
-                  placeholder="Tell me about your project..."
-                />
-                {errors.message ? <p className="mt-2 text-sm text-rose-400">{errors.message}</p> : null}
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_35px_color-mix(in_oklab,var(--color-primary)_42%,transparent)] transition hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-70"
+        <div className="grid gap-8 md:grid-cols-[1fr_1.2fr]">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+            className="space-y-3"
+          >
+            {links.map((link) => {
+              const Icon = link.icon
+              return (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target={link.href.startsWith('http') ? '_blank' : undefined}
+                  rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
+                  className="group flex items-center gap-4 rounded-xl border border-border bg-surface/40 p-4 backdrop-blur transition-all hover:border-primary/60 hover:bg-surface-elevated"
                 >
-                  {submitting ? 'Sending...' : 'Send Message'}
-                  <Send size={16} />
-                </button>
-                {status ? (
-                  <p className="text-sm text-[color:color-mix(in_oklab,var(--color-text)_72%,transparent)]">
-                    {status}
-                  </p>
-                ) : null}
-              </div>
-            </form>
-          </ScrollReveal>
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
+                    style={{ background: 'var(--gradient-accent)' }}
+                  >
+                    <Icon className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-muted-foreground">{link.label}</div>
+                    <div className="truncate font-medium">{link.value}</div>
+                  </div>
+                </a>
+              )
+            })}
+          </motion.div>
+
+          <motion.form
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+            onSubmit={handleSubmit}
+            className="rounded-2xl border border-border bg-surface/40 p-6 backdrop-blur md:p-8"
+          >
+            <div className="space-y-4">
+              <Field
+                label="Name"
+                value={form.name}
+                onChange={(v) => setForm({ ...form, name: v })}
+                maxLength={100}
+              />
+              <Field
+                label="Email"
+                type="email"
+                value={form.email}
+                onChange={(v) => setForm({ ...form, email: v })}
+                maxLength={255}
+              />
+              <Field
+                label="Message"
+                textarea
+                value={form.message}
+                onChange={(v) => setForm({ ...form, message: v })}
+                maxLength={1000}
+              />
+
+              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+              <button
+                type="submit"
+                disabled={state === 'sending'}
+                className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 font-semibold text-primary-foreground transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
+                style={{ background: 'var(--gradient-hero)', backgroundSize: '200% 200%' }}
+              >
+                {state === 'sent' ? (
+                  <>
+                    <Check className="h-4 w-4" /> Sent!
+                  </>
+                ) : state === 'sending' ? (
+                  'Sending…'
+                ) : (
+                  <>
+                    Send message{' '}
+                    <Send className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.form>
         </div>
       </div>
     </section>
+  )
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  textarea,
+  maxLength,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  type?: string
+  textarea?: boolean
+  maxLength?: number
+}) {
+  const shared =
+    'w-full rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary'
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-medium text-muted-foreground">{label}</span>
+      {textarea ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={maxLength}
+          rows={5}
+          placeholder={`Your ${label.toLowerCase()}…`}
+          className={shared + ' resize-none'}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={maxLength}
+          placeholder={`Your ${label.toLowerCase()}…`}
+          className={shared}
+        />
+      )}
+    </label>
   )
 }

@@ -1,18 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bot, MessageCircle, Send, X } from 'lucide-react'
+import { Bot, MessageSquare, Send, User, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sendChatMessage, summarizeChatSession } from '../services/api'
 import type { ChatMessage } from '../types'
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
 const WELCOME_MESSAGE =
-  "Hi! I'm Muhammad Usman's portfolio assistant. Ask me about his skills, projects, services, or availability for freelance work."
+  "Hey! 👋 I'm Usman's AI assistant. Ask me about his projects, skills, or how to hire him."
 
-interface ChatWidgetProps {
-  className?: string
-}
-
-export function ChatWidget({ className }: ChatWidgetProps) {
+export function ChatWidget() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: WELCOME_MESSAGE },
@@ -24,14 +20,10 @@ export function ChatWidget({ className }: ChatWidgetProps) {
   const [showVisitorForm, setShowVisitorForm] = useState(false)
   const idleTimerRef = useRef<number | null>(null)
   const summarizedRef = useRef(false)
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const scrollRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    scrollToBottom()
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, open])
 
   const summarizeIfNeeded = useCallback(async () => {
@@ -49,9 +41,7 @@ export function ChatWidget({ className }: ChatWidgetProps) {
   }, [messages, visitorEmail, visitorName])
 
   const resetIdleTimer = useCallback(() => {
-    if (idleTimerRef.current) {
-      window.clearTimeout(idleTimerRef.current)
-    }
+    if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current)
     idleTimerRef.current = window.setTimeout(() => {
       if (open) {
         void summarizeIfNeeded()
@@ -61,9 +51,7 @@ export function ChatWidget({ className }: ChatWidgetProps) {
   }, [open, summarizeIfNeeded])
 
   useEffect(() => {
-    if (open) {
-      resetIdleTimer()
-    }
+    if (open) resetIdleTimer()
     return () => {
       if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current)
     }
@@ -100,7 +88,7 @@ export function ChatWidget({ className }: ChatWidgetProps) {
           content:
             error instanceof Error
               ? error.message
-              : 'Sorry, I am temporarily unavailable. Please try again later.',
+              : 'Connection hiccup — please try again.',
         },
       ])
     } finally {
@@ -110,124 +98,153 @@ export function ChatWidget({ className }: ChatWidgetProps) {
   }
 
   return (
-    <div className={className}>
+    <>
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 1.2, type: 'spring' }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.94 }}
+        type="button"
+        onClick={() => (open ? void handleClose() : setOpen(true))}
+        aria-label="Open chat assistant"
+        className="animate-pulse-glow fixed right-5 bottom-5 z-40 flex h-14 w-14 items-center justify-center rounded-full text-primary-foreground shadow-lg md:right-8 md:bottom-8"
+        style={{ background: 'var(--gradient-hero)' }}
+      >
+        {open ? <X className="h-6 w-6" /> : <MessageSquare className="h-6 w-6" />}
+      </motion.button>
+
       <AnimatePresence>
         {open ? (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-5 z-[60] flex h-[min(520px,70vh)] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_95%,transparent),color-mix(in_oklab,var(--color-bg)_92%,transparent))] shadow-[0_25px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+            transition={{ duration: 0.25 }}
+            className="fixed right-4 bottom-24 z-40 flex h-[min(70vh,560px)] w-[min(94vw,380px)] flex-col overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl md:right-8"
+            style={{ boxShadow: '0 20px 60px oklch(0 0 0 / 0.4)' }}
           >
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,var(--color-primary),var(--color-secondary))] text-slate-950">
-                  <Bot size={18} />
-                </span>
+            <div
+              className="flex items-center justify-between px-4 py-3 text-primary-foreground"
+              style={{ background: 'var(--gradient-hero)' }}
+            >
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
                 <div>
-                  <p className="text-sm font-semibold text-[var(--color-text)]">Portfolio Assistant</p>
-                  <p className="text-xs text-[color:color-mix(in_oklab,var(--color-text)_60%,transparent)]">
-                    Powered by AI
-                  </p>
+                  <div className="text-sm font-bold">Ask Usman&apos;s AI</div>
+                  <div className="text-[11px] opacity-80">Powered by Groq · usually replies instantly</div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => void handleClose()}
-                className="rounded-full border border-white/10 p-2 text-[var(--color-text)] transition hover:border-[var(--color-primary)]"
-                aria-label="Close chat"
+                aria-label="Close"
+                className="rounded p-1 hover:bg-white/20"
               >
-                <X size={16} />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-              {messages.map((message, index) => (
+            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+              {messages.map((m, i) => (
                 <div
-                  key={`${message.role}-${index}`}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  key={i}
+                  className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
-                      message.role === 'user'
-                        ? 'bg-[var(--color-primary)] text-slate-950'
-                        : 'border border-white/10 bg-black/10 text-[var(--color-text)]'
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: m.role === 'user' ? 'var(--surface-elevated)' : 'var(--gradient-accent)',
+                    }}
+                  >
+                    {m.role === 'user' ? (
+                      <User className="h-3.5 w-3.5" />
+                    ) : (
+                      <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+                    )}
+                  </div>
+                  <div
+                    className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      m.role === 'user'
+                        ? 'rounded-tr-sm bg-surface-elevated'
+                        : 'rounded-tl-sm bg-surface'
                     }`}
                   >
-                    {message.content}
+                    {m.content}
                   </div>
                 </div>
               ))}
               {loading ? (
-                <p className="text-xs text-[color:color-mix(in_oklab,var(--color-text)_55%,transparent)]">
-                  Thinking...
-                </p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="inline-flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current" />
+                    <span
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-current"
+                      style={{ animationDelay: '0.15s' }}
+                    />
+                    <span
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-current"
+                      style={{ animationDelay: '0.3s' }}
+                    />
+                  </span>
+                  thinking…
+                </div>
               ) : null}
-              <div ref={messagesEndRef} />
             </div>
 
-            <div className="border-t border-white/10 p-4">
+            <div className="border-t border-border p-3">
               {showVisitorForm ? (
-                <div className="mb-3 grid gap-2">
+                <div className="mb-2 grid gap-2">
                   <input
                     value={visitorName}
                     onChange={(e) => setVisitorName(e.target.value)}
                     placeholder="Your name (optional)"
-                    className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                    className="rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm outline-none focus:border-primary"
                   />
                   <input
                     value={visitorEmail}
                     onChange={(e) => setVisitorEmail(e.target.value)}
                     placeholder="Your email (optional)"
-                    className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                    className="rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm outline-none focus:border-primary"
                   />
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setShowVisitorForm(true)}
-                  className="mb-3 text-xs text-[var(--color-primary)] underline-offset-2 hover:underline"
+                  className="mb-2 text-xs text-primary underline-offset-2 hover:underline"
                 >
                   Share your contact info (optional)
                 </button>
               )}
-
-              <div className="flex gap-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void handleSend()
+                }}
+                className="flex items-center gap-2"
+              >
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      void handleSend()
-                    }
-                  }}
-                  placeholder="Ask about skills, projects, services..."
-                  className="flex-1 rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                  placeholder="Ask something…"
+                  maxLength={500}
+                  className="flex-1 rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm outline-none focus:border-primary"
                 />
                 <button
-                  type="button"
-                  onClick={() => void handleSend()}
-                  disabled={loading || !input.trim()}
-                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--color-primary)] px-4 text-slate-950 transition hover:opacity-90 disabled:opacity-50"
-                  aria-label="Send message"
+                  type="submit"
+                  disabled={!input.trim() || loading}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-primary-foreground disabled:opacity-50"
+                  style={{ background: 'var(--gradient-hero)' }}
+                  aria-label="Send"
                 >
-                  <Send size={16} />
+                  <Send className="h-4 w-4" />
                 </button>
-              </div>
+              </form>
             </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
-
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="fixed bottom-5 right-20 z-[60] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--color-primary),var(--color-secondary))] text-slate-950 shadow-[0_0_35px_color-mix(in_oklab,var(--color-primary)_45%,transparent)] transition hover:-translate-y-1"
-        aria-label={open ? 'Close chat widget' : 'Open chat widget'}
-      >
-        {open ? <X size={22} /> : <MessageCircle size={22} />}
-      </button>
-    </div>
+    </>
   )
 }

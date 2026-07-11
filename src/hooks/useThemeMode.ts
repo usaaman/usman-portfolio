@@ -20,7 +20,9 @@ export function useThemeMode() {
   const [theme, setTheme] = useState<ThemeMode>(getInitialTheme)
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
+    const root = document.documentElement
+    root.classList.remove('dark', 'light')
+    root.classList.add(theme)
     window.localStorage.setItem(storageKey, theme)
   }, [theme])
 

@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion'
+import { Briefcase } from 'lucide-react'
 import type { ServiceItem } from '../types'
 import { LoadingSkeleton } from './LoadingSkeleton'
-import { ScrollReveal } from './ScrollReveal'
-import { SectionIntro } from './SectionIntro'
 
 interface ServicesSectionProps {
   id: string
@@ -11,56 +10,85 @@ interface ServicesSectionProps {
 }
 
 export function ServicesSection({ id, services, loading = false }: ServicesSectionProps) {
+  if (loading) {
+    return (
+      <section id={id} className="relative px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <LoadingSkeleton key={index} className="min-h-[250px]" />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
   return (
-    <section id={id} className="px-4 py-20 md:py-24">
+    <section id={id} className="relative px-6 py-24 md:py-32">
       <div className="mx-auto max-w-6xl">
-        <SectionIntro
-          eyebrow="Services"
-          title="Freelance-ready services spanning development, AI, and creative delivery."
-          subtitle="Built as a data-driven service grid so the admin panel can swap, add, or reorder offerings later."
-        />
-
-        {loading ? (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <LoadingSkeleton key={index} className="min-h-[250px]" />
-            ))}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.6 }}
+          className="mb-12"
+        >
+          <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <Briefcase className="h-4 w-4" style={{ color: 'var(--neon-cyan)' }} />
+            <span>Services</span>
           </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {services.map((service, index) => {
-              const Icon = service.icon
-              return (
-                <ScrollReveal key={service.title} delay={index * 0.07}>
-                  <motion.article
-                    whileHover={{ y: -8 }}
-                    transition={{ duration: 0.22 }}
-                    className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_86%,transparent),color-mix(in_oklab,var(--color-surface)_70%,transparent))] p-7 shadow-[0_18px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+          <h2 className="font-display text-4xl font-bold tracking-tight md:text-6xl">
+            Hire me on <span className="text-gradient">Fiverr & Upwork</span>
+          </h2>
+        </motion.div>
+
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {services.map((service, i) => {
+            const Icon = service.icon
+            const highlight = Boolean(service.badge)
+            return (
+              <motion.div
+                key={service.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.5, delay: i * 0.08 }}
+                whileHover={{ y: -6 }}
+                className="group relative overflow-hidden rounded-2xl border border-border bg-surface/40 p-6 backdrop-blur"
+                style={
+                  highlight
+                    ? {
+                        borderColor: 'transparent',
+                        background:
+                          'linear-gradient(var(--surface), var(--surface)) padding-box, var(--gradient-coral) border-box',
+                      }
+                    : undefined
+                }
+              >
+                {service.badge ? (
+                  <span
+                    className="absolute top-4 right-4 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase"
+                    style={{
+                      background: 'var(--gradient-coral)',
+                      color: 'var(--primary-foreground)',
+                    }}
                   >
-                    <div className="absolute inset-0 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_18%,transparent),color-mix(in_oklab,var(--color-accent)_14%,transparent))] opacity-0 transition duration-300 group-hover:opacity-100" />
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-black/10 text-[var(--color-primary)]">
-                          <Icon size={24} />
-                        </span>
-                        {service.badge ? (
-                          <span className="rounded-full border border-[color:color-mix(in_oklab,var(--color-primary)_50%,transparent)] bg-[color:color-mix(in_oklab,var(--color-primary)_12%,transparent)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-primary)]">
-                            {service.badge}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <h3 className="mt-6 font-display text-2xl text-[var(--color-text)]">{service.title}</h3>
-                      <p className="mt-4 text-base leading-7 text-[color:color-mix(in_oklab,var(--color-text)_72%,transparent)]">
-                        {service.description}
-                      </p>
-                    </div>
-                  </motion.article>
-                </ScrollReveal>
-              )
-            })}
-          </div>
-        )}
+                    {service.badge}
+                  </span>
+                ) : null}
+                <div
+                  className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl"
+                  style={{
+                    background: highlight ? 'var(--gradient-coral)' : 'var(--gradient-accent)',
+                  }}
+                >
+                  <Icon className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <h3 className="mb-2 font-display text-lg font-bold">{service.title}</h3>
+                <p className="text-sm text-muted-foreground">{service.description}</p>
+              </motion.div>
+            )
+          })}
+        </div>
       </div>
     </section>
   )

@@ -1,5 +1,5 @@
-import { ScrollReveal } from './ScrollReveal'
-import { SectionIntro } from './SectionIntro'
+import { motion } from 'framer-motion'
+import { Sparkles } from 'lucide-react'
 
 interface AboutSectionProps {
   id: string
@@ -9,52 +9,54 @@ interface AboutSectionProps {
 
 export function AboutSection({ id, content, highlights }: AboutSectionProps) {
   return (
-    <section id={id} className="px-4 py-20 md:py-24">
-      <div className="mx-auto max-w-6xl">
-        <SectionIntro
-          eyebrow="About"
-          title="Creative problem-solving with code, AI, and visuals."
-          subtitle="A software engineering journey shaped by both technical depth and visual storytelling."
-        />
+    <section id={id} className="relative px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-5xl">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.6 }}
+          className="mb-10"
+        >
+          <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <Sparkles className="h-4 w-4" style={{ color: 'var(--neon-cyan)' }} />
+            <span>About Me</span>
+          </div>
+          <h2 className="font-display text-4xl font-bold tracking-tight md:text-6xl">
+            Curious mind, <span className="text-gradient">creative hands</span>
+          </h2>
+        </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <ScrollReveal className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-8 shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-10">
-            <p className="text-lg leading-8 text-[color:color-mix(in_oklab,var(--color-text)_82%,transparent)]">
-              {content}
-            </p>
-          </ScrollReveal>
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl"
+        >
+          {content}
+        </motion.p>
 
-          <ScrollReveal delay={0.1} className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-8 shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl md:p-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--color-primary)]">
-              Areas of Interest
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              {highlights.map((item) => (
-                <span
-                  key={item.label}
-                  className="rounded-full border border-white/10 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_15%,transparent),color-mix(in_oklab,var(--color-accent)_12%,transparent))] px-4 py-2 text-sm font-medium text-[var(--color-text)]"
-                >
-                  {item.label}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.28em] text-[color:color-mix(in_oklab,var(--color-text)_60%,transparent)]">
-                  Current Path
-                </p>
-                <p className="mt-2 font-display text-xl text-[var(--color-text)]">5th Semester</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.28em] text-[color:color-mix(in_oklab,var(--color-text)_60%,transparent)]">
-                  Building With
-                </p>
-                <p className="mt-2 font-display text-xl text-[var(--color-text)]">React + Firebase</p>
-              </div>
-            </div>
-          </ScrollReveal>
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mt-10 flex flex-wrap gap-3"
+        >
+          {highlights.map((item, i) => (
+            <motion.span
+              key={item.label}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 + i * 0.05 }}
+              className="rounded-full border border-border bg-surface/60 px-4 py-2 text-sm font-medium backdrop-blur transition-colors hover:border-primary/50"
+            >
+              {item.label}
+            </motion.span>
+          ))}
+        </motion.div>
       </div>
     </section>
   )
