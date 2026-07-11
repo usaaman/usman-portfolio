@@ -9,7 +9,8 @@ export function getFirestore() {
       throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not configured.')
     }
 
-    const serviceAccount = JSON.parse(raw)
+    const decoded = Buffer.from(raw, 'base64').toString('utf-8')
+    const serviceAccount = JSON.parse(decoded)
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     })
