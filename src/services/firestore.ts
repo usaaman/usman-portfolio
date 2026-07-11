@@ -10,8 +10,16 @@ import {
   writeBatch,
   type DocumentData,
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../lib/firebase'
+import {
+  sanitizeAbout,
+  sanitizeHeroContent,
+  sanitizeProjects,
+  sanitizeServices,
+  sanitizeSkills,
+  stripUndefined,
+} from '../lib/firestoreSanitize'
 import type {
   AnalyticsData,
   ChatSummary,
@@ -112,27 +120,32 @@ export async function fetchAnalytics(): Promise<AnalyticsData> {
 }
 
 export async function saveHeroContent(data: FirestoreHeroContent) {
-  await setDoc(doc(db, 'heroContent', 'main'), data, { merge: true })
+  const payload = sanitizeHeroContent(data)
+  await setDoc(doc(db, 'heroContent', 'main'), payload, { merge: true })
 }
 
 export async function saveAbout(data: FirestoreAbout) {
-  await setDoc(doc(db, 'about', 'main'), data, { merge: true })
+  const payload = sanitizeAbout(data)
+  await setDoc(doc(db, 'about', 'main'), payload, { merge: true })
 }
 
 export async function saveSkills(items: FirestoreSkillItem[]) {
-  await setDoc(doc(db, 'skills', 'main'), { items }, { merge: true })
+  const payload = sanitizeSkills(items)
+  await setDoc(doc(db, 'skills', 'main'), { items: payload }, { merge: true })
 }
 
 export async function saveProjects(items: FirestoreProjectItem[]) {
-  await setDoc(doc(db, 'projects', 'main'), { items }, { merge: true })
+  const payload = sanitizeProjects(items)
+  await setDoc(doc(db, 'projects', 'main'), { items: payload }, { merge: true })
 }
 
 export async function saveServices(items: FirestoreServiceItem[]) {
-  await setDoc(doc(db, 'services', 'main'), { items }, { merge: true })
+  const payload = sanitizeServices(items)
+  await setDoc(doc(db, 'services', 'main'), { items: payload }, { merge: true })
 }
 
 export async function saveSiteTheme(data: FirestoreSiteTheme) {
-  await setDoc(doc(db, 'siteTheme', 'main'), data, { merge: true })
+  await setDoc(doc(db, 'siteTheme', 'main'), stripUndefined(data), { merge: true })
 }
 
 export async function markContactAsRead(id: string, read: boolean) {
@@ -140,9 +153,39 @@ export async function markContactAsRead(id: string, read: boolean) {
 }
 
 export async function uploadFile(path: string, file: File): Promise<string> {
-  const storageRef = ref(storage, path)
-  await uploadBytes(storageRef, file)
-  return getDownloadURL(storageRef)
+  return uploadFileWithProgress(path, file, () => {})
+}
+
+export function uploadFileWithProgress(
+  path: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const storageRef = ref(storage, path)
+    const task = uploadBytesResumable(storageRef, file)
+
+    task.on(
+      'state_changed',
+      (snapshot) => {
+        if (snapshot.totalBytes > 0) {
+          onProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100))
+        }
+      },
+      (error) => {
+        console.error('Storage upload failed:', error)
+        reject(error)
+      },
+      async () => {
+        try {
+          const url = await getDownloadURL(task.snapshot.ref)
+          resolve(url)
+        } catch (error) {
+          reject(error)
+        }
+      },
+    )
+  })
 }
 
 export async function seedDefaultContent(seedData: {

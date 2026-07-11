@@ -21,8 +21,9 @@ import {
   saveSiteTheme,
   saveSkills,
   seedDefaultContent,
-  uploadFile,
+  uploadFileWithProgress,
 } from '../services/firestore'
+import { fileNameFromUrl } from '../lib/firestoreSanitize'
 import type {
   AnalyticsData,
   ChatSummary,
@@ -65,8 +66,20 @@ function createId(prefix: string) {
 export function AdminDashboard() {
   const { logout } = useAuth()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
-  const [status, setStatus] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [heroSaving, setHeroSaving] = useState(false)
+  const [aboutSaving, setAboutSaving] = useState(false)
+  const [skillsSaving, setSkillsSaving] = useState(false)
+  const [projectsSaving, setProjectsSaving] = useState(false)
+  const [servicesSaving, setServicesSaving] = useState(false)
+  const [themeSaving, setThemeSaving] = useState(false)
+  const [seedSaving, setSeedSaving] = useState(false)
+  const [resumeUpload, setResumeUpload] = useState<{ progress: number; fileName: string } | null>(
+    null,
+  )
+  const [profileUpload, setProfileUpload] = useState<{ progress: number; fileName: string } | null>(
+    null,
+  )
 
   const [hero, setHero] = useState<FirestoreHeroContent | null>(null)
   const [about, setAbout] = useState<FirestoreAbout | null>(null)
@@ -122,54 +135,88 @@ export function AdminDashboard() {
     void loadAll()
   }, [])
 
-  const showStatus = (message: string) => {
-    setStatus(message)
-    window.setTimeout(() => setStatus(''), 3000)
+  const showStatus = (message: string, type: 'success' | 'error' = 'success') => {
+    setStatus({ message, type })
+    window.setTimeout(() => setStatus(null), 4000)
   }
 
   const handleSeed = async () => {
-    setSaving(true)
+    setSeedSaving(true)
     try {
       const seed = portfolioDataToFirestoreSeed()
       await seedDefaultContent(seed)
       await loadAll()
       showStatus('Default portfolio content seeded successfully.')
     } catch (error) {
-      showStatus(error instanceof Error ? error.message : 'Seed failed.')
+      console.error('Seed failed:', error)
+      showStatus(error instanceof Error ? error.message : 'Seed failed.', 'error')
     } finally {
-      setSaving(false)
+      setSeedSaving(false)
     }
   }
 
   const handleResumeUpload = async (file: File) => {
     if (!hero) return
-    setSaving(true)
+    if (file.type !== 'application/pdf') {
+      showStatus('Please select a PDF file for the resume.', 'error')
+      return
+    }
+
+    setResumeUpload({ progress: 0, fileName: file.name })
     try {
-      const url = await uploadFile(`resume/${file.name}`, file)
+      const path = `resume/${Date.now()}-${file.name}`
+      const url = await uploadFileWithProgress(path, file, (progress) => {
+        setResumeUpload({ progress, fileName: file.name })
+      })
       const updated = { ...hero, resumeUrl: url }
       await saveHeroContent(updated)
       setHero(updated)
-      showStatus('Resume uploaded.')
+      showStatus('Resume uploaded and saved.')
     } catch (error) {
-      showStatus(error instanceof Error ? error.message : 'Upload failed.')
+      console.error('Resume upload failed:', error)
+      showStatus(error instanceof Error ? error.message : 'Resume upload failed.', 'error')
     } finally {
-      setSaving(false)
+      setResumeUpload(null)
     }
   }
 
   const handleProfileUpload = async (file: File) => {
     if (!hero) return
-    setSaving(true)
+    if (!file.type.startsWith('image/')) {
+      showStatus('Please select a JPG or PNG image.', 'error')
+      return
+    }
+
+    setProfileUpload({ progress: 0, fileName: file.name })
     try {
-      const url = await uploadFile(`profile/${file.name}`, file)
+      const path = `profile/${Date.now()}-${file.name}`
+      const url = await uploadFileWithProgress(path, file, (progress) => {
+        setProfileUpload({ progress, fileName: file.name })
+      })
       const updated = { ...hero, profileImageUrl: url }
       await saveHeroContent(updated)
       setHero(updated)
-      showStatus('Profile image uploaded.')
+      showStatus('Profile image uploaded and saved.')
     } catch (error) {
-      showStatus(error instanceof Error ? error.message : 'Upload failed.')
+      console.error('Profile upload failed:', error)
+      showStatus(error instanceof Error ? error.message : 'Profile upload failed.', 'error')
     } finally {
-      setSaving(false)
+      setProfileUpload(null)
+    }
+  }
+
+  const handleSaveHero = async () => {
+    if (!hero) return
+    setHeroSaving(true)
+    try {
+      await saveHeroContent(hero)
+      await loadAll()
+      showStatus('Hero content saved.')
+    } catch (error) {
+      console.error('Hero save failed:', error)
+      showStatus(error instanceof Error ? error.message : 'Failed to save hero content.', 'error')
+    } finally {
+      setHeroSaving(false)
     }
   }
 
@@ -233,8 +280,14 @@ export function AdminDashboard() {
 
         <main className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
           {status ? (
-            <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-              {status}
+            <div
+              className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+                status.type === 'error'
+                  ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              }`}
+            >
+              {status.message}
             </div>
           ) : null}
 
@@ -244,17 +297,24 @@ export function AdminDashboard() {
               <StatCard label="Contact Submissions" value={String(contacts.length)} />
               <StatCard label="Chat Summaries" value={String(chats.length)} />
               <div className="md:col-span-3 rounded-xl border border-slate-800 bg-slate-950 p-5">
+                <h2 className="text-lg font-semibold">Live site sync</h2>
+                <p className="mt-2 text-sm text-slate-400">
+                  The public portfolio uses Firestore real-time listeners (<code className="text-emerald-400">onSnapshot</code>).
+                  Changes you save here appear on the live site automatically — no manual refresh needed.
+                </p>
+              </div>
+              <div className="md:col-span-3 rounded-xl border border-slate-800 bg-slate-950 p-5">
                 <h2 className="text-lg font-semibold">Quick Actions</h2>
                 <p className="mt-2 text-sm text-slate-400">
                   Initialize Firestore with default portfolio content if this is your first setup.
                 </p>
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={seedSaving}
                   onClick={() => void handleSeed()}
                   className="mt-4 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60"
                 >
-                  Seed Default Content
+                  {seedSaving ? 'Seeding...' : 'Seed Default Content'}
                 </button>
               </div>
             </section>
@@ -263,39 +323,41 @@ export function AdminDashboard() {
           {activeTab === 'hero' ? (
             hero ? (
             <section className="grid gap-4">
-              <Field label="Name" value={hero.name} onChange={(v) => setHero({ ...hero, name: v })} />
-              <Field label="Tagline" value={hero.tagline} onChange={(v) => setHero({ ...hero, tagline: v })} />
+              <Field
+                label="Name"
+                value={hero.name}
+                onChange={(v) => setHero((prev) => (prev ? { ...prev, name: v } : prev))}
+              />
+              <Field
+                label="Tagline"
+                value={hero.tagline}
+                onChange={(v) => setHero((prev) => (prev ? { ...prev, tagline: v } : prev))}
+              />
               <TextArea
                 label="Summary"
                 value={hero.summary}
-                onChange={(v) => setHero({ ...hero, summary: v })}
+                onChange={(v) => setHero((prev) => (prev ? { ...prev, summary: v } : prev))}
               />
-              <Field
-                label="Resume URL"
-                value={hero.resumeUrl}
-                onChange={(v) => setHero({ ...hero, resumeUrl: v })}
+
+              <MediaFileUpload
+                label="Resume (PDF)"
+                accept=".pdf,application/pdf"
+                currentUrl={hero.resumeUrl}
+                uploading={resumeUpload}
+                onUpload={handleResumeUpload}
+                kind="file"
               />
-              <Field
-                label="Profile Image URL"
-                value={hero.profileImageUrl ?? ''}
-                onChange={(v) => setHero({ ...hero, profileImageUrl: v })}
+
+              <MediaFileUpload
+                label="Profile Image"
+                accept="image/jpeg,image/png,image/webp,image/*"
+                currentUrl={hero.profileImageUrl ?? ''}
+                uploading={profileUpload}
+                onUpload={handleProfileUpload}
+                kind="image"
               />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <FileUpload label="Upload Resume PDF" accept=".pdf" onUpload={handleResumeUpload} />
-                <FileUpload label="Upload Profile Image" accept="image/*" onUpload={handleProfileUpload} />
-              </div>
-              <SaveButton
-                saving={saving}
-                onClick={async () => {
-                  setSaving(true)
-                  try {
-                    await saveHeroContent(hero)
-                    showStatus('Hero content saved.')
-                  } finally {
-                    setSaving(false)
-                  }
-                }}
-              />
+
+              <SaveButton saving={heroSaving} onClick={handleSaveHero} />
             </section>
             ) : (
               <EmptyState message="No hero content yet. Seed default content from Overview." />
@@ -324,14 +386,22 @@ export function AdminDashboard() {
                 />
               </div>
               <SaveButton
-                saving={saving}
+                saving={aboutSaving}
                 onClick={async () => {
-                  setSaving(true)
+                  if (!about) return
+                  setAboutSaving(true)
                   try {
                     await saveAbout(about)
+                    await loadAll()
                     showStatus('About section saved.')
+                  } catch (error) {
+                    console.error('About save failed:', error)
+                    showStatus(
+                      error instanceof Error ? error.message : 'Failed to save about.',
+                      'error',
+                    )
                   } finally {
-                    setSaving(false)
+                    setAboutSaving(false)
                   }
                 }}
               />
@@ -404,16 +474,22 @@ export function AdminDashboard() {
                 Add Skill
               </button>
               <SaveButton
-                saving={saving}
+                saving={skillsSaving}
                 onClick={async () => {
-                  setSaving(true)
+                  setSkillsSaving(true)
                   try {
                     const normalized = skills.map((skill, index) => ({ ...skill, order: index }))
                     await saveSkills(normalized)
                     setSkills(normalized)
                     showStatus('Skills saved.')
+                  } catch (error) {
+                    console.error('Skills save failed:', error)
+                    showStatus(
+                      error instanceof Error ? error.message : 'Failed to save skills.',
+                      'error',
+                    )
                   } finally {
-                    setSaving(false)
+                    setSkillsSaving(false)
                   }
                 }}
               />
@@ -533,16 +609,22 @@ export function AdminDashboard() {
                 Add Project
               </button>
               <SaveButton
-                saving={saving}
+                saving={projectsSaving}
                 onClick={async () => {
-                  setSaving(true)
+                  setProjectsSaving(true)
                   try {
                     const normalized = projects.map((project, index) => ({ ...project, order: index }))
                     await saveProjects(normalized)
                     setProjects(normalized)
                     showStatus('Projects saved.')
+                  } catch (error) {
+                    console.error('Projects save failed:', error)
+                    showStatus(
+                      error instanceof Error ? error.message : 'Failed to save projects.',
+                      'error',
+                    )
                   } finally {
-                    setSaving(false)
+                    setProjectsSaving(false)
                   }
                 }}
               />
@@ -606,7 +688,7 @@ export function AdminDashboard() {
                       value={service.badge ?? ''}
                       onChange={(v) =>
                         setServices((current) =>
-                          current.map((s, i) => (i === index ? { ...s, badge: v || undefined } : s)),
+                          current.map((s, i) => (i === index ? { ...s, badge: v } : s)),
                         )
                       }
                     />
@@ -640,16 +722,22 @@ export function AdminDashboard() {
                 Add Service
               </button>
               <SaveButton
-                saving={saving}
+                saving={servicesSaving}
                 onClick={async () => {
-                  setSaving(true)
+                  setServicesSaving(true)
                   try {
                     const normalized = services.map((service, index) => ({ ...service, order: index }))
                     await saveServices(normalized)
                     setServices(normalized)
                     showStatus('Services saved.')
+                  } catch (error) {
+                    console.error('Services save failed:', error)
+                    showStatus(
+                      error instanceof Error ? error.message : 'Failed to save services.',
+                      'error',
+                    )
                   } finally {
-                    setSaving(false)
+                    setServicesSaving(false)
                   }
                 }}
               />
@@ -668,14 +756,21 @@ export function AdminDashboard() {
               ))}
               <div className="md:col-span-2">
                 <SaveButton
-                  saving={saving}
+                  saving={themeSaving}
                   onClick={async () => {
-                    setSaving(true)
+                    if (!theme) return
+                    setThemeSaving(true)
                     try {
                       await saveSiteTheme(theme)
                       showStatus('Theme colors saved.')
+                    } catch (error) {
+                      console.error('Theme save failed:', error)
+                      showStatus(
+                        error instanceof Error ? error.message : 'Failed to save theme.',
+                        'error',
+                      )
                     } finally {
-                      setSaving(false)
+                      setThemeSaving(false)
                     }
                   }}
                 />
@@ -849,28 +944,90 @@ function SaveButton({ saving, onClick }: { saving: boolean; onClick: () => Promi
   )
 }
 
-function FileUpload({
+function MediaFileUpload({
   label,
   accept,
+  currentUrl,
+  uploading,
   onUpload,
+  kind,
 }: {
   label: string
   accept: string
+  currentUrl: string
+  uploading: { progress: number; fileName: string } | null
   onUpload: (file: File) => Promise<void>
+  kind: 'file' | 'image'
 }) {
+  const inputId = `upload-${label.replace(/\s+/g, '-').toLowerCase()}`
+  const fileName = currentUrl ? fileNameFromUrl(currentUrl) : ''
+
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
-      {label}
+    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+      <p className="mb-3 text-sm font-medium text-slate-300">{label}</p>
+
+      {kind === 'image' && currentUrl ? (
+        <img
+          src={currentUrl}
+          alt="Current profile"
+          className="mb-3 h-24 w-24 rounded-xl border border-slate-700 object-cover"
+        />
+      ) : null}
+
+      {fileName ? (
+        <div className="mb-3 text-sm text-slate-400">
+          Current:{' '}
+          {currentUrl ? (
+            <a
+              href={currentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-emerald-400 hover:underline"
+            >
+              {fileName}
+            </a>
+          ) : (
+            fileName
+          )}
+        </div>
+      ) : (
+        <p className="mb-3 text-sm text-slate-500">No file uploaded yet.</p>
+      )}
+
+      {uploading ? (
+        <div className="mb-3">
+          <div className="mb-1 flex justify-between text-xs text-slate-400">
+            <span>Uploading {uploading.fileName}…</span>
+            <span>{uploading.progress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${uploading.progress}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <label
+        htmlFor={inputId}
+        className="inline-flex cursor-pointer items-center rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-emerald-400 hover:text-emerald-300"
+      >
+        {fileName ? 'Replace file' : 'Choose file'}
+      </label>
       <input
+        id={inputId}
         type="file"
         accept={accept}
+        className="hidden"
+        disabled={Boolean(uploading)}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) void onUpload(file)
+          e.target.value = ''
         }}
-        className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
       />
-    </label>
+    </div>
   )
 }
 
