@@ -777,7 +777,7 @@ export function AdminDashboard() {
                           try {
                             const normalized = projects.map((p, i) => ({ ...p, order: i }))
                             const missingThumbnails = normalized.filter(
-                              (p) => !isValidAssetUrl(p.imageUrl ?? ''),
+                              (p) => !p.comingSoon && !isValidAssetUrl(p.imageUrl ?? ''),
                             )
                             if (missingThumbnails.length > 0) {
                               showStatus(
