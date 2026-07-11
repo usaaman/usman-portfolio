@@ -133,7 +133,7 @@ export function AdminDashboard() {
     const errors: string[] = []
     const pick = <T,>(index: number, fallback: T): T => {
       const result = results[index]
-      if (result.status === 'fulfilled') return result.value
+      if (result.status === 'fulfilled') return result.value as T
       errors.push(result.reason instanceof Error ? result.reason.message : 'Load failed')
       return fallback
     }
