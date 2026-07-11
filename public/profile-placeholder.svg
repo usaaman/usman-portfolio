@@ -1,0 +1,25 @@
+<svg width="720" height="720" viewBox="0 0 720 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="720" rx="64" fill="#10182D"/>
+  <circle cx="360" cy="250" r="124" fill="url(#paint0_radial_1_2)"/>
+  <path d="M168 590C168 490.589 248.589 410 348 410H372C471.411 410 552 490.589 552 590V632H168V590Z" fill="url(#paint1_linear_1_2)"/>
+  <circle cx="360" cy="256" r="110" fill="#D6D8FF" fill-opacity="0.12"/>
+  <path d="M287 292C287 251.683 319.683 219 360 219C400.317 219 433 251.683 433 292V324C433 364.317 400.317 397 360 397C319.683 397 287 364.317 287 324V292Z" fill="#EEF2FF" fill-opacity="0.92"/>
+  <path d="M220 604C220 531.098 279.098 472 352 472H368C440.902 472 500 531.098 500 604V632H220V604Z" fill="#EEF2FF" fill-opacity="0.92"/>
+  <circle cx="552" cy="162" r="62" fill="#7CF6D4" fill-opacity="0.22"/>
+  <circle cx="590" cy="560" r="88" fill="#FF7BD5" fill-opacity="0.14"/>
+  <circle cx="104" cy="148" r="72" fill="#7D7CFF" fill-opacity="0.18"/>
+  <text x="50%" y="92%" text-anchor="middle" fill="#7CF6D4" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="8">
+    MUHAMMAD USMAN
+  </text>
+  <defs>
+    <radialGradient id="paint0_radial_1_2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 250) rotate(90) scale(124)">
+      <stop stop-color="#7CF6D4"/>
+      <stop offset="1" stop-color="#7D7CFF"/>
+    </radialGradient>
+    <linearGradient id="paint1_linear_1_2" x1="168" y1="632" x2="552" y2="432" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7CF6D4"/>
+      <stop offset="0.5" stop-color="#7D7CFF"/>
+      <stop offset="1" stop-color="#FF7BD5"/>
+    </linearGradient>
+  </defs>
+</svg>

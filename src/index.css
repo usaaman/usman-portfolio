@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #7cf6d4;
+  --color-secondary: #7d7cff;
+  --color-accent: #ff7bd5;
+  --color-bg: #0b1020;
+  --color-surface: #131a31;
+  --color-text: #f5f7ff;
+  color-scheme: dark;
+}
+
+html[data-theme='light'] {
+  --color-primary: #6f4bff;
+  --color-secondary: #00b8d9;
+  --color-accent: #ff6b81;
+  --color-bg: #f5f7ff;
+  --color-surface: #ffffff;
+  --color-text: #111827;
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-primary) 55%, transparent);
+  color: var(--color-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
