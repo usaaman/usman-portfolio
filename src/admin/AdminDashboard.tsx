@@ -111,6 +111,7 @@ export function AdminDashboard() {
   const [chats, setChats] = useState<ChatSummary[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData>({ visitorCount: 0, lastUpdated: null })
   const [selectedChat, setSelectedChat] = useState<ChatSummary | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
 
   const featuredCount = useMemo(
     () => projects.filter((project) => project.featured && !project.comingSoon).length,
@@ -575,155 +576,235 @@ export function AdminDashboard() {
               <p className="text-sm text-slate-400">
                 Featured projects: {featuredCount}/4 (non-coming-soon)
               </p>
-              {projects.map((project, index) => (
-                <div key={project.id} className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field
-                      label="Title"
-                      value={project.title}
-                      onChange={(v) =>
-                        setProjects((current) =>
-                          current.map((p, i) => (i === index ? { ...p, title: v } : p)),
-                        )
-                      }
-                    />
-                    <Field
-                      label="Tech Stack (comma-separated)"
-                      value={project.techStack.join(', ')}
-                      onChange={(v) =>
-                        setProjects((current) =>
-                          current.map((p, i) =>
-                            i === index
-                              ? { ...p, techStack: v.split(',').map((t) => t.trim()).filter(Boolean) }
-                              : p,
-                          ),
-                        )
-                      }
-                    />
+
+              {!selectedProjectId ? (
+                <>
+                  <div className="grid gap-3">
+                    {projects.map((project) => (
+                      <div
+                        key={project.id}
+                        className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950 p-4"
+                      >
+                        <div className="flex items-center gap-4">
+                          {project.imageUrl ? (
+                            <img
+                              src={project.imageUrl}
+                              alt={project.title}
+                              className="h-14 w-24 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-14 w-24 items-center justify-center rounded-lg border border-dashed border-slate-700 text-xs text-slate-500">
+                              No image
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-slate-100">{project.title || 'Untitled Project'}</p>
+                            <p className="text-xs text-slate-400">
+                              {project.featured ? 'Featured' : 'Not featured'}
+                              {project.comingSoon ? ' • Coming Soon' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProjectId(project.id)}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const updated = projects.filter((p) => p.id !== project.id)
+                              setProjects(updated)
+                              try {
+                                await saveProjects(updated.map((p, i) => ({ ...p, order: i })))
+                                showStatus('Project deleted.')
+                              } catch (error) {
+                                showStatus(
+                                  error instanceof Error ? error.message : 'Failed to delete project.',
+                                  'error',
+                                )
+                              }
+                            }}
+                            className="rounded-lg border border-rose-500/40 px-3 py-2 text-sm text-rose-300"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <TextArea
-                    label="Description"
-                    value={project.description}
-                    onChange={(v) =>
-                      setProjects((current) =>
-                        current.map((p, i) => (i === index ? { ...p, description: v } : p)),
-                      )
-                    }
-                  />
-                  <MediaFileUpload
-                    label="Project Thumbnail (required)"
-                    accept="image/jpeg,image/png,image/webp,image/*,.jpg,.jpeg,.png,.webp"
-                    currentUrl={project.imageUrl ?? ''}
-                    uploading={projectUploads[project.id] ?? null}
-                    onUpload={(file) => handleProjectThumbnailUpload(project.id, file)}
-                    kind="image"
-                  />
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field
-                      label="GitHub URL"
-                      value={project.githubUrl ?? ''}
-                      onChange={(v) =>
-                        setProjects((current) =>
-                          current.map((p, i) => (i === index ? { ...p, githubUrl: v } : p)),
-                        )
-                      }
-                    />
-                    <Field
-                      label="Live URL"
-                      value={project.liveUrl ?? ''}
-                      onChange={(v) =>
-                        setProjects((current) =>
-                          current.map((p, i) => (i === index ? { ...p, liveUrl: v } : p)),
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={project.featured}
-                        onChange={() => toggleFeatured(project.id)}
-                      />
-                      Featured
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={project.comingSoon ?? false}
-                        onChange={() =>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newId = createId('project')
+                      setProjects((current) => [
+                        ...current,
+                        {
+                          id: newId,
+                          title: 'New Project',
+                          description: 'Project description',
+                          techStack: [],
+                          githubUrl: '',
+                          liveUrl: '',
+                          imageUrl: '',
+                          featured: false,
+                          order: current.length,
+                        },
+                      ])
+                      setSelectedProjectId(newId)
+                    }}
+                    className="rounded-xl border border-slate-700 px-4 py-2 text-sm"
+                  >
+                    + Add New Project
+                  </button>
+                </>
+              ) : (
+                (() => {
+                  const index = projects.findIndex((p) => p.id === selectedProjectId)
+                  if (index === -1) {
+                    setSelectedProjectId(null)
+                    return null
+                  }
+                  const project = projects[index]
+                  return (
+                    <div className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProjectId(null)}
+                        className="mb-2 w-fit text-sm text-slate-400 hover:text-emerald-400"
+                      >
+                        ← Back to list
+                      </button>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Field
+                          label="Title"
+                          value={project.title}
+                          onChange={(v) =>
+                            setProjects((current) =>
+                              current.map((p, i) => (i === index ? { ...p, title: v } : p)),
+                            )
+                          }
+                        />
+                        <Field
+                          label="Tech Stack (comma-separated)"
+                          value={project.techStack.join(', ')}
+                          onChange={(v) =>
+                            setProjects((current) =>
+                              current.map((p, i) =>
+                                i === index
+                                  ? { ...p, techStack: v.split(',').map((t) => t.trim()).filter(Boolean) }
+                                  : p,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
+
+                      <TextArea
+                        label="Description"
+                        value={project.description}
+                        onChange={(v) =>
                           setProjects((current) =>
-                            current.map((p, i) =>
-                              i === index ? { ...p, comingSoon: !p.comingSoon } : p,
-                            ),
+                            current.map((p, i) => (i === index ? { ...p, description: v } : p)),
                           )
                         }
                       />
-                      Coming Soon
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setProjects((current) => current.filter((p) => p.id !== project.id))}
-                      className="rounded-lg border border-rose-500/40 px-3 py-2 text-sm text-rose-300"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  setProjects((current) => [
-                    ...current,
-                    {
-                      id: createId('project'),
-                      title: 'New Project',
-                      description: 'Project description',
-                      techStack: [],
-                      githubUrl: '',
-                      liveUrl: '',
-                      imageUrl: '',
-                      featured: false,
-                      order: current.length,
-                    },
-                  ])
-                }
-                className="rounded-xl border border-slate-700 px-4 py-2 text-sm"
-              >
-                Add Project
-              </button>
-              <SaveButton
-                saving={projectsSaving}
-                onClick={async () => {
-                  setProjectsSaving(true)
-                  try {
-                    const normalized = projects.map((project, index) => ({ ...project, order: index }))
-                    const missingThumbnails = normalized.filter(
-                      (project) => !isValidAssetUrl(project.imageUrl ?? ''),
-                    )
-                    if (missingThumbnails.length > 0) {
-                      showStatus(
-                        `Each project needs a thumbnail image. Missing for: ${missingThumbnails.map((p) => p.title).join(', ')}`,
-                        'error',
-                      )
-                      return
-                    }
-                    await saveProjects(normalized)
-                    const refreshed = await fetchProjects()
-                    setProjects(refreshed)
-                    showStatus('Projects saved.')
-                  } catch (error) {
-                    console.error('Projects save failed:', error)
-                    showStatus(
-                      error instanceof Error ? error.message : 'Failed to save projects.',
-                      'error',
-                    )
-                  } finally {
-                    setProjectsSaving(false)
-                  }
-                }}
-              />
+
+                      <MediaFileUpload
+                        label="Project Thumbnail (required)"
+                        accept="image/jpeg,image/png,image/webp,image/*,.jpg,.jpeg,.png,.webp"
+                        currentUrl={project.imageUrl ?? ''}
+                        uploading={projectUploads[project.id] ?? null}
+                        onUpload={(file) => handleProjectThumbnailUpload(project.id, file)}
+                        kind="image"
+                      />
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Field
+                          label="GitHub URL"
+                          value={project.githubUrl ?? ''}
+                          onChange={(v) =>
+                            setProjects((current) =>
+                              current.map((p, i) => (i === index ? { ...p, githubUrl: v } : p)),
+                            )
+                          }
+                        />
+                        <Field
+                          label="Live URL"
+                          value={project.liveUrl ?? ''}
+                          onChange={(v) =>
+                            setProjects((current) =>
+                              current.map((p, i) => (i === index ? { ...p, liveUrl: v } : p)),
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-4">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={project.featured}
+                            onChange={() => toggleFeatured(project.id)}
+                          />
+                          Featured
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={project.comingSoon ?? false}
+                            onChange={() =>
+                              setProjects((current) =>
+                                current.map((p, i) =>
+                                  i === index ? { ...p, comingSoon: !p.comingSoon } : p,
+                                ),
+                              )
+                            }
+                          />
+                          Coming Soon
+                        </label>
+                      </div>
+
+                      <SaveButton
+                        saving={projectsSaving}
+                        onClick={async () => {
+                          setProjectsSaving(true)
+                          try {
+                            const normalized = projects.map((p, i) => ({ ...p, order: i }))
+                            const missingThumbnails = normalized.filter(
+                              (p) => !isValidAssetUrl(p.imageUrl ?? ''),
+                            )
+                            if (missingThumbnails.length > 0) {
+                              showStatus(
+                                `Each project needs a thumbnail image. Missing for: ${missingThumbnails.map((p) => p.title).join(', ')}`,
+                                'error',
+                              )
+                              return
+                            }
+                            await saveProjects(normalized)
+                            const refreshed = await fetchProjects()
+                            setProjects(refreshed)
+                            showStatus('Project saved.')
+                            setSelectedProjectId(null)
+                          } catch (error) {
+                            showStatus(
+                              error instanceof Error ? error.message : 'Failed to save project.',
+                              'error',
+                            )
+                          } finally {
+                            setProjectsSaving(false)
+                          }
+                        }}
+                      />
+                    </div>
+                  )
+                })()
+              )}
             </section>
           ) : null}
 
