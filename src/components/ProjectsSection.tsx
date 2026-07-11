@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ExternalLink, Github, Plus, Rocket, Sparkles } from 'lucide-react'
+import { Plus, Rocket } from 'lucide-react'
 import type { ProjectItem } from '../types'
 import { LoadingSkeleton } from './LoadingSkeleton'
+import { ProjectCard3D } from './ProjectCard3D'
 
 interface ProjectsSectionProps {
   id: string
@@ -63,65 +64,17 @@ export function ProjectsSection({
             Projects coming soon.
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-8 md:grid-cols-2">
             {visible.map((project, i) => (
-              <motion.article
+              <motion.div
                 key={`${project.title}-${i}`}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-80px' }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                whileHover={{ y: -6 }}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-surface/40 p-6 backdrop-blur transition-shadow hover:shadow-[0_20px_50px_-20px_oklch(0.68_0.28_300/0.45)]"
               >
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-display text-xl font-bold md:text-2xl">{project.title}</h3>
-                    {project.comingSoon ? (
-                      <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <Sparkles className="h-3 w-3" /> Coming Soon
-                      </span>
-                    ) : null}
-                  </div>
-                  {!project.comingSoon ? (
-                    <div className="flex shrink-0 items-center gap-2">
-                      {project.githubUrl ? (
-                        <a
-                          href={project.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`${project.title} on GitHub`}
-                          className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-                        >
-                          <Github className="h-4 w-4" />
-                        </a>
-                      ) : null}
-                      {project.liveUrl ? (
-                        <a
-                          href={project.liveUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`${project.title} live demo`}
-                          className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-secondary hover:text-foreground"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-                <p className="mb-5 text-sm text-muted-foreground md:text-base">{project.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  {project.tech.map((tech) => (
-                    <span
-                      key={tech}
-                      className="rounded-md border border-border bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-              </motion.article>
+                <ProjectCard3D project={project} />
+              </motion.div>
             ))}
 
             {visible.length < 4 && !showAll ? (

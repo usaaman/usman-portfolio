@@ -133,6 +133,7 @@ export const portfolioData: PortfolioData = {
         'Pharmacy inventory and invoice management system focused on usability, speed, and reliable day-to-day store operations.',
       tech: ['React.js', 'Firebase', 'Tailwind CSS'],
       githubUrl: 'https://github.com/usaaman/medcore-pos/',
+      imageUrl: '/profile-placeholder.svg',
       featured: true,
     },
     {
@@ -142,6 +143,7 @@ export const portfolioData: PortfolioData = {
       tech: ['JavaScript', 'Firebase', 'Cloudinary', 'Groq AI'],
       githubUrl: 'https://github.com/usaaman/chatapp/',
       liveUrl: 'https://chatapp-omega-ten.vercel.app/',
+      imageUrl: '/profile-placeholder.svg',
       featured: true,
     },
     {
@@ -149,6 +151,7 @@ export const portfolioData: PortfolioData = {
       description:
         'This featured card is intentionally reserved for future admin-managed additions and will gracefully expand when new work is published.',
       tech: ['CMS Ready', 'Admin Editable', 'Portfolio'],
+      imageUrl: '/profile-placeholder.svg',
       comingSoon: true,
     },
     {
@@ -156,6 +159,7 @@ export const portfolioData: PortfolioData = {
       description:
         'Another placeholder for future case studies, freelance builds, or experiments without requiring any UI rewrites.',
       tech: ['Scalable Layout', 'Props Driven', 'Responsive'],
+      imageUrl: '/profile-placeholder.svg',
       comingSoon: true,
     },
   ],

@@ -22,6 +22,7 @@ import {
   saveSkills,
   seedDefaultContent,
   uploadFileWithProgress,
+  safeStorageFileName,
 } from '../services/firestore'
 import { fileNameFromUrl } from '../lib/firestoreSanitize'
 import type {
@@ -63,8 +64,24 @@ function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
+function isPdfFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  return file.type === 'application/pdf' || name.endsWith('.pdf')
+}
+
+function isImageFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  return (
+    file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(name)
+  )
+}
+
+function isValidAssetUrl(url: string): boolean {
+  return Boolean(url && url !== '#' && (url.startsWith('http') || url.startsWith('/')))
+}
+
 export function AdminDashboard() {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [heroSaving, setHeroSaving] = useState(false)
@@ -80,6 +97,9 @@ export function AdminDashboard() {
   const [profileUpload, setProfileUpload] = useState<{ progress: number; fileName: string } | null>(
     null,
   )
+  const [projectUploads, setProjectUploads] = useState<
+    Record<string, { progress: number; fileName: string }>
+  >({})
 
   const [hero, setHero] = useState<FirestoreHeroContent | null>(null)
   const [about, setAbout] = useState<FirestoreAbout | null>(null)
@@ -98,17 +118,7 @@ export function AdminDashboard() {
   )
 
   const loadAll = async () => {
-    const [
-      heroData,
-      aboutData,
-      skillsData,
-      projectsData,
-      servicesData,
-      themeData,
-      contactsData,
-      chatsData,
-      analyticsData,
-    ] = await Promise.all([
+    const results = await Promise.allSettled([
       fetchHeroContent(),
       fetchAbout(),
       fetchSkills(),
@@ -120,20 +130,39 @@ export function AdminDashboard() {
       fetchAnalytics(),
     ])
 
-    setHero(heroData)
-    setAbout(aboutData)
-    setSkills(skillsData)
-    setProjects(projectsData)
-    setServices(servicesData)
-    setTheme(themeData ?? defaultSiteTheme)
-    setContacts(contactsData)
-    setChats(chatsData)
-    setAnalytics(analyticsData)
+    const errors: string[] = []
+    const pick = <T,>(index: number, fallback: T): T => {
+      const result = results[index]
+      if (result.status === 'fulfilled') return result.value
+      errors.push(result.reason instanceof Error ? result.reason.message : 'Load failed')
+      return fallback
+    }
+
+    setHero(pick(0, null))
+    setAbout(pick(1, null))
+    setSkills(pick(2, []))
+    setProjects(pick(3, []))
+    setServices(pick(4, []))
+    setTheme(pick(5, defaultSiteTheme) ?? defaultSiteTheme)
+    setContacts(pick(6, []))
+    setChats(pick(7, []))
+    setAnalytics(pick(8, { visitorCount: 0, lastUpdated: null }))
+
+    if (errors.length > 0) {
+      console.error('Admin load partial failures:', errors)
+    }
   }
 
   useEffect(() => {
+    if (!user) return
     void loadAll()
-  }, [])
+  }, [user])
+
+  useEffect(() => {
+    if (activeTab === 'chats' && user) {
+      void fetchChatSummaries().then(setChats)
+    }
+  }, [activeTab, user])
 
   const showStatus = (message: string, type: 'success' | 'error' = 'success') => {
     setStatus({ message, type })
@@ -157,14 +186,15 @@ export function AdminDashboard() {
 
   const handleResumeUpload = async (file: File) => {
     if (!hero) return
-    if (file.type !== 'application/pdf') {
+    if (!isPdfFile(file)) {
       showStatus('Please select a PDF file for the resume.', 'error')
       return
     }
 
     setResumeUpload({ progress: 0, fileName: file.name })
     try {
-      const path = `resume/${Date.now()}-${file.name}`
+      const safeName = safeStorageFileName(file.name)
+      const path = `resume/${Date.now()}-${safeName}`
       const url = await uploadFileWithProgress(path, file, (progress) => {
         setResumeUpload({ progress, fileName: file.name })
       })
@@ -182,14 +212,15 @@ export function AdminDashboard() {
 
   const handleProfileUpload = async (file: File) => {
     if (!hero) return
-    if (!file.type.startsWith('image/')) {
-      showStatus('Please select a JPG or PNG image.', 'error')
+    if (!isImageFile(file)) {
+      showStatus('Please select a JPG, PNG, or WebP image.', 'error')
       return
     }
 
     setProfileUpload({ progress: 0, fileName: file.name })
     try {
-      const path = `profile/${Date.now()}-${file.name}`
+      const safeName = safeStorageFileName(file.name)
+      const path = `profile/${Date.now()}-${safeName}`
       const url = await uploadFileWithProgress(path, file, (progress) => {
         setProfileUpload({ progress, fileName: file.name })
       })
@@ -202,6 +233,48 @@ export function AdminDashboard() {
       showStatus(error instanceof Error ? error.message : 'Profile upload failed.', 'error')
     } finally {
       setProfileUpload(null)
+    }
+  }
+
+  const handleProjectThumbnailUpload = async (projectId: string, file: File) => {
+    if (!isImageFile(file)) {
+      showStatus('Project thumbnail must be JPG, PNG, or WebP.', 'error')
+      return
+    }
+
+    setProjectUploads((current) => ({
+      ...current,
+      [projectId]: { progress: 0, fileName: file.name },
+    }))
+
+    try {
+      const safeName = safeStorageFileName(file.name)
+      const path = `projects/${projectId}-${Date.now()}-${safeName}`
+      const url = await uploadFileWithProgress(path, file, (progress) => {
+        setProjectUploads((current) => ({
+          ...current,
+          [projectId]: { progress, fileName: file.name },
+        }))
+      })
+
+      const updatedProjects = projects.map((project) =>
+        project.id === projectId ? { ...project, imageUrl: url } : project,
+      )
+      setProjects(updatedProjects)
+      await saveProjects(updatedProjects.map((project, index) => ({ ...project, order: index })))
+      showStatus('Project thumbnail uploaded and saved.')
+    } catch (error) {
+      console.error('Project thumbnail upload failed:', error)
+      showStatus(
+        error instanceof Error ? error.message : 'Project thumbnail upload failed.',
+        'error',
+      )
+    } finally {
+      setProjectUploads((current) => {
+        const next = { ...current }
+        delete next[projectId]
+        return next
+      })
     }
   }
 
@@ -480,7 +553,8 @@ export function AdminDashboard() {
                   try {
                     const normalized = skills.map((skill, index) => ({ ...skill, order: index }))
                     await saveSkills(normalized)
-                    setSkills(normalized)
+                    const refreshed = await fetchSkills()
+                    setSkills(refreshed)
                     showStatus('Skills saved.')
                   } catch (error) {
                     console.error('Skills save failed:', error)
@@ -535,6 +609,14 @@ export function AdminDashboard() {
                         current.map((p, i) => (i === index ? { ...p, description: v } : p)),
                       )
                     }
+                  />
+                  <MediaFileUpload
+                    label="Project Thumbnail (required)"
+                    accept="image/jpeg,image/png,image/webp,image/*,.jpg,.jpeg,.png,.webp"
+                    currentUrl={project.imageUrl ?? ''}
+                    uploading={projectUploads[project.id] ?? null}
+                    onUpload={(file) => handleProjectThumbnailUpload(project.id, file)}
+                    kind="image"
                   />
                   <div className="grid gap-3 md:grid-cols-2">
                     <Field
@@ -599,6 +681,9 @@ export function AdminDashboard() {
                       title: 'New Project',
                       description: 'Project description',
                       techStack: [],
+                      githubUrl: '',
+                      liveUrl: '',
+                      imageUrl: '',
                       featured: false,
                       order: current.length,
                     },
@@ -614,8 +699,19 @@ export function AdminDashboard() {
                   setProjectsSaving(true)
                   try {
                     const normalized = projects.map((project, index) => ({ ...project, order: index }))
+                    const missingThumbnails = normalized.filter(
+                      (project) => !isValidAssetUrl(project.imageUrl ?? ''),
+                    )
+                    if (missingThumbnails.length > 0) {
+                      showStatus(
+                        `Each project needs a thumbnail image. Missing for: ${missingThumbnails.map((p) => p.title).join(', ')}`,
+                        'error',
+                      )
+                      return
+                    }
                     await saveProjects(normalized)
-                    setProjects(normalized)
+                    const refreshed = await fetchProjects()
+                    setProjects(refreshed)
                     showStatus('Projects saved.')
                   } catch (error) {
                     console.error('Projects save failed:', error)
@@ -728,7 +824,8 @@ export function AdminDashboard() {
                   try {
                     const normalized = services.map((service, index) => ({ ...service, order: index }))
                     await saveServices(normalized)
-                    setServices(normalized)
+                    const refreshed = await fetchServices()
+                    setServices(refreshed)
                     showStatus('Services saved.')
                   } catch (error) {
                     console.error('Services save failed:', error)
@@ -827,9 +924,28 @@ export function AdminDashboard() {
           ) : null}
 
           {activeTab === 'chats' ? (
-            <section className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+            <section className="grid gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-400">
+                  {chats.length} chat {chats.length === 1 ? 'summary' : 'summaries'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void fetchChatSummaries().then(setChats)}
+                  className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-emerald-400"
+                >
+                  Refresh
+                </button>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
               <div className="grid max-h-[70vh] gap-2 overflow-y-auto">
-                {chats.map((chat) => (
+                {chats.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-slate-700 p-6 text-sm text-slate-400">
+                    No chat summaries yet. Summaries appear when visitors close the chatbot after
+                    messaging.
+                  </p>
+                ) : (
+                  chats.map((chat) => (
                   <button
                     key={chat.id}
                     type="button"
@@ -846,7 +962,8 @@ export function AdminDashboard() {
                       {chat.timestamp?.toLocaleString() ?? 'Pending'}
                     </p>
                   </button>
-                ))}
+                  ))
+                )}
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 {selectedChat ? (
@@ -870,6 +987,7 @@ export function AdminDashboard() {
                 ) : (
                   <p className="text-sm text-slate-400">Select a chat summary to view details.</p>
                 )}
+              </div>
               </div>
             </section>
           ) : null}
@@ -960,7 +1078,8 @@ function MediaFileUpload({
   kind: 'file' | 'image'
 }) {
   const inputId = `upload-${label.replace(/\s+/g, '-').toLowerCase()}`
-  const fileName = currentUrl ? fileNameFromUrl(currentUrl) : ''
+  const fileName =
+    currentUrl && isValidAssetUrl(currentUrl) ? fileNameFromUrl(currentUrl) : ''
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
@@ -977,18 +1096,14 @@ function MediaFileUpload({
       {fileName ? (
         <div className="mb-3 text-sm text-slate-400">
           Current:{' '}
-          {currentUrl ? (
-            <a
-              href={currentUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-emerald-400 hover:underline"
-            >
-              {fileName}
-            </a>
-          ) : (
-            fileName
-          )}
+          <a
+            href={currentUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-emerald-400 hover:underline"
+          >
+            {fileName}
+          </a>
         </div>
       ) : (
         <p className="mb-3 text-sm text-slate-500">No file uploaded yet.</p>

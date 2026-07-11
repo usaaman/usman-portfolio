@@ -27,7 +27,7 @@ export interface FirestoreProjectItem {
   techStack: string[]
   githubUrl?: string
   liveUrl?: string
-  imageUrl?: string
+  imageUrl: string
   featured: boolean
   order: number
   comingSoon?: boolean

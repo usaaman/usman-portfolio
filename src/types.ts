@@ -38,6 +38,7 @@ export interface ProjectItem {
   tech: string[]
   githubUrl?: string
   liveUrl?: string
+  imageUrl: string
   featured?: boolean
   comingSoon?: boolean
 }

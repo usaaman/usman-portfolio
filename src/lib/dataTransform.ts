@@ -45,6 +45,7 @@ export function portfolioDataToFirestoreSeed() {
     liveUrl: project.liveUrl ?? '',
     featured: project.featured ?? false,
     order: index,
+    imageUrl: project.imageUrl ?? '',
     comingSoon: project.comingSoon ?? false,
   }))
 
@@ -114,6 +115,7 @@ export function firestoreProjectsToProjectItems(projects: FirestoreProjectItem[]
     tech: p.techStack,
     githubUrl: p.githubUrl,
     liveUrl: p.liveUrl,
+    imageUrl: p.imageUrl || '/profile-placeholder.svg',
     featured: p.featured,
     comingSoon: p.comingSoon,
   }))
