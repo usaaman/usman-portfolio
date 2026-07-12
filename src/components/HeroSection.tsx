@@ -1,5 +1,17 @@
 import { motion } from 'framer-motion'
-import { ArrowDown, Download, Github, Linkedin, Mail } from 'lucide-react'
+import {
+  ArrowDown,
+  Atom,
+  Box,
+  Clapperboard,
+  Download,
+  Figma,
+  Flame,
+  Github,
+  Linkedin,
+  Mail,
+  Sparkles,
+} from 'lucide-react'
 import type { HeroData } from '../types'
 
 interface HeroSectionProps {
@@ -12,6 +24,16 @@ export function HeroSection({ id, data }: HeroSectionProps) {
   const nameParts = data.name.trim().split(/\s+/)
   const firstName = nameParts[0] ?? data.name
   const lastName = nameParts.slice(1).join(' ')
+
+  // Badges data with colors and icons (logos instead of text)
+  const badges = [
+    { name: 'React', icon: Atom, color: '#61DAFB', glow: 'rgba(97, 218, 251, 0.3)' },
+    { name: 'AI', icon: Sparkles, color: '#FF6B6B', glow: 'rgba(255, 107, 107, 0.3)' },
+    { name: 'Firebase', icon: Flame, color: '#FFA000', glow: 'rgba(255, 160, 0, 0.3)' },
+    { name: 'Figma', icon: Figma, color: '#A259FF', glow: 'rgba(162, 89, 255, 0.3)' },
+    { name: 'Unity', icon: Box, color: '#808080', glow: 'rgba(128, 128, 128, 0.3)' },
+    { name: 'CapCut', icon: Clapperboard, color: '#00D4FF', glow: 'rgba(0, 212, 255, 0.3)' },
+  ]
 
   return (
     <section
@@ -34,6 +56,7 @@ export function HeroSection({ id, data }: HeroSectionProps) {
       </div>
 
       <div className="mx-auto grid w-full max-w-6xl items-center gap-12 md:grid-cols-[1.2fr_1fr]">
+        {/* LEFT SIDE - Text Content */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -131,41 +154,44 @@ export function HeroSection({ id, data }: HeroSectionProps) {
           </div>
         </motion.div>
 
+        {/* RIGHT SIDE - Image with Rotating Badges */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.9, delay: 0.2 }}
           className="relative mx-auto"
         >
-          {/* 🔥 YAHAN CHANGE HUA HAI - Image wale div mein events add kiye hain */}
-          <div 
+          <div
             className="relative"
             onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              const centerX = rect.width / 2;
-              const centerY = rect.height / 2;
-              const rotateX = ((y - centerY) / centerY) * 15;
-              const rotateY = ((x - centerX) / centerX) * 15;
-              const image = e.currentTarget.querySelector('img');
+              const rect = e.currentTarget.getBoundingClientRect()
+              const x = e.clientX - rect.left
+              const y = e.clientY - rect.top
+              const centerX = rect.width / 2
+              const centerY = rect.height / 2
+              const rotateX = ((y - centerY) / centerY) * 15
+              const rotateY = ((x - centerX) / centerX) * 15
+              const image = e.currentTarget.querySelector('img')
               if (image) {
-                image.style.transform = `rotateX(${-rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-                image.style.transition = 'transform 0.1s ease-out';
+                image.style.transform = `rotateX(${-rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`
+                image.style.transition = 'transform 0.1s ease-out'
               }
             }}
             onMouseLeave={(e) => {
-              const image = e.currentTarget.querySelector('img');
+              const image = e.currentTarget.querySelector('img')
               if (image) {
-                image.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
-                image.style.transition = 'transform 0.5s ease-out';
+                image.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)'
+                image.style.transition = 'transform 0.5s ease-out'
               }
             }}
           >
+            {/* Glow Effect */}
             <div
               className="absolute -inset-6 rounded-full blur-3xl"
               style={{ background: 'var(--gradient-hero)', opacity: 0.4 }}
             />
+
+            {/* Image Container */}
             <div
               className="animate-float relative aspect-square w-64 overflow-hidden rounded-full border-4 sm:w-80 md:w-96"
               style={{
@@ -181,26 +207,46 @@ export function HeroSection({ id, data }: HeroSectionProps) {
                 className="h-full w-full object-cover"
               />
             </div>
+
+            {/* 🔥 6 ROTATING LOGO BADGES */}
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              transition={{ duration: 45, repeat: Infinity, ease: 'linear' }}
               className="pointer-events-none absolute inset-0"
             >
-              <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium backdrop-blur"
-                style={{ boxShadow: 'var(--glow-cyan)' }}
-              >
-                React
-              </div>
-              <div
-                className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium backdrop-blur"
-                style={{ boxShadow: 'var(--glow-primary)' }}
-              >
-                AI
-              </div>
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium backdrop-blur">
-                Firebase
-              </div>
+              {badges.map((badge, index) => {
+                // Calculate position on circle (60 degrees apart)
+                const angle = (index / badges.length) * 2 * Math.PI - Math.PI / 2
+                const radius = 50 // Adjust distance from center
+                const x = 50 + radius * Math.cos(angle)
+                const y = 50 + radius * Math.sin(angle)
+                const Icon = badge.icon
+
+                return (
+                  <motion.div
+                    key={badge.name}
+                    className="pointer-events-auto absolute flex h-11 w-11 items-center justify-center rounded-full border bg-background/80 backdrop-blur-md shadow-lg"
+                    style={{
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      transform: 'translate(-50%, -50%)',
+                      borderColor: badge.color,
+                      boxShadow: `0 0 20px ${badge.glow}, inset 0 0 10px ${badge.glow}`,
+                    }}
+                    whileHover={{
+                      scale: 1.3,
+                      boxShadow: `0 0 40px ${badge.glow}`,
+                    }}
+                  >
+                    <Icon
+                      className="h-5 w-5"
+                      style={{ color: badge.color }}
+                      strokeWidth={2}
+                      aria-label={badge.name}
+                    />
+                  </motion.div>
+                )
+              })}
             </motion.div>
           </div>
         </motion.div>
